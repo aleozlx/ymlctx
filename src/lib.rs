@@ -146,6 +146,10 @@ pub mod context {
     }
 
     impl Context {
+        pub fn new() -> Context {
+            Context { data: HashTrieMap::new() }
+        }
+
         pub fn overlay(&self, another: &Context) -> Context {
             let mut forward_snapshot = self.data.clone();
             for (k, v) in another.data.iter() {
@@ -213,5 +217,17 @@ mod tests{
     fn list() {
         let a = Context::from("a: 1\nb:\n- 1\n- 2");
         assert_eq!(a.list("b").unwrap(), vec![CtxObj::Int(1), CtxObj::Int(2)]);
+    }
+
+    #[test]
+    fn hide_existing() {
+        let a = Context::from("a: 1\nb: 0");
+        assert_eq!(a.hide("b"), Context::from("a: 1\n"));
+    }
+
+    #[test]
+    fn hide_nonexisting() {
+        let a = Context::from("a: 1\nb: 0");
+        assert_eq!(a.hide("c"), Context::from("a: 1\nb: 0"));
     }
 }

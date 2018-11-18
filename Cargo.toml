@@ -1,6 +1,6 @@
 [package]
 name = "ymlctx"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Alex Yang <aleozlx@gmail.com>"]
 description = "YAML configuration overlaying system that natively integrates into operationalized tasks"
 license = "MIT"
