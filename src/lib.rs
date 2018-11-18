@@ -163,6 +163,11 @@ pub mod context {
             else { None }
         }
 
+        pub fn list(&self, key: &str) -> Option<Vec<CtxObj>> {
+            if let CtxObj::Array(val) = &self.data[key] { Some(val.clone()) }
+            else { None }
+        }
+
         pub fn hide(&self, key: &str) -> Context {
             Context { data: self.data.remove(key) }
         }
@@ -171,7 +176,7 @@ pub mod context {
 
 #[cfg(test)]
 mod tests{
-    use crate::context::Context;
+    use crate::context::{Context, CtxObj};
 
     #[test]
     fn multiple_overwrites() {
@@ -195,5 +200,18 @@ mod tests{
         let b = Context::from("c: 1");
         let c = a.overlay(&b);
         assert_eq!(c, Context::from("a: 1\nb: 0\nc: 1"));
+    }
+
+    #[test]
+    fn subcontext() {
+        let a = Context::from("a: 1\nb:\n  b1: 1\n  b2: 1");
+        let b = Context::from("b1: 1\nb2: 1");
+        assert_eq!(a.subcontext("b").unwrap(), b);
+    }
+
+    #[test]
+    fn list() {
+        let a = Context::from("a: 1\nb:\n- 1\n- 2");
+        assert_eq!(a.list("b").unwrap(), vec![CtxObj::Int(1), CtxObj::Int(2)]);
     }
 }
