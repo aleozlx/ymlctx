@@ -158,15 +158,19 @@ pub mod context {
             Context { data: forward_snapshot }
         }
 
-        pub fn assign(&self, key: &str, val: CtxObj) -> Context {
+        pub fn set(&self, key: &str, val: CtxObj) -> Context {
             Context { data: self.data.insert(key.to_owned(), val) }
         }
 
-        pub fn assign_opt(&self, key: &str, optional: Option<CtxObj>) -> Context {
+        pub fn set_opt(&self, key: &str, optional: Option<CtxObj>) -> Context {
             match optional {
                 Some(val) => Context { data: self.data.insert(key.to_owned(), val) },
                 None => self.clone()
             }
+        }
+
+        pub fn get(&self, key: &str) -> Option<&CtxObj> {
+            self.data.get(key)
         }
 
         pub fn subcontext(&self, key: &str) -> Option<Context> {
@@ -174,8 +178,16 @@ pub mod context {
             else { None }
         }
 
-        pub fn list(&self, key: &str) -> Option<Vec<CtxObj>> {
-            if let CtxObj::Array(val) = &self.data[key] { Some(val.clone()) }
+        pub fn list_contexts(&self, key: &str) -> Option<Vec<Context>> {
+            if let CtxObj::Array(val) = &self.data[key] {
+                let mut ret = Vec::new();
+                for i in val.iter() {
+                    if let CtxObj::Context(ctx) = i {
+                        ret.push(ctx.clone());
+                    }
+                }
+                return Some(ret);
+            }
             else { None }
         }
 
@@ -221,9 +233,9 @@ mod tests{
     }
 
     #[test]
-    fn list() {
-        let a = Context::from("a: 1\nb:\n- 1\n- 2");
-        assert_eq!(a.list("b").unwrap(), vec![CtxObj::Int(1), CtxObj::Int(2)]);
+    fn list_contexts() {
+        let a = Context::from("a: 1\nb:\n- b1: 1\n- b2: 1");
+        assert_eq!(a.list_contexts("b").unwrap(), vec![Context::from("b1: 1"), Context::from("b2: 1")]);
     }
 
     #[test]
