@@ -153,7 +153,7 @@ pub mod context {
         pub fn overlay(&self, another: &Context) -> Context {
             let mut forward_snapshot = self.data.clone();
             for (k, v) in another.data.iter() {
-                forward_snapshot = forward_snapshot.insert(k.to_owned(), v.to_owned());
+                forward_snapshot.insert_mut(k.to_owned(), v.to_owned());
             }
             Context { data: forward_snapshot }
         }
