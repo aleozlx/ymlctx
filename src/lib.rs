@@ -55,6 +55,15 @@ pub mod context {
         }
     }
 
+    impl CtxObjUnpack for i32 {
+        fn unpack(src: CtxObj) -> Option<Self> {
+            if let CtxObj::Int(val) = src {
+                Some(val as Self)
+            }
+            else { None }
+        }
+    }
+
     impl CtxObjUnpack for usize {
         fn unpack(src: CtxObj) -> Option<Self> {
             if let CtxObj::Int(val) = src {
@@ -321,6 +330,13 @@ mod tests{
     fn unpack_i64() {
         let a = Context::from("a: 1");
         let out: i64 = a.unpack("a").unwrap();
+        assert_eq!(out, 1);
+    }
+
+    #[test]
+    fn unpack_i32() {
+        let a = Context::from("a: 1");
+        let out: i32 = a.unpack("a").unwrap();
         assert_eq!(out, 1);
     }
 
