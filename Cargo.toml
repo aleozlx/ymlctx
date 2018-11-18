@@ -3,6 +3,7 @@ name = "ymlctx"
 version = "0.0.1"
 authors = ["Alex Yang <aleozlx@gmail.com>"]
 description = "YAML configuration overlaying system that natively integrates into operationalized tasks"
+license = "MIT"
 edition = "2018"
 
 [dependencies]
