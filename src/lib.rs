@@ -162,6 +162,13 @@ pub mod context {
             Context { data: self.data.insert(key.to_owned(), val) }
         }
 
+        pub fn assign_opt(&self, key: &str, optional: Option<CtxObj>) -> Context {
+            match optional {
+                Some(val) => Context { data: self.data.insert(key.to_owned(), val) },
+                None => self.clone()
+            }
+        }
+
         pub fn subcontext(&self, key: &str) -> Option<Context> {
             if let CtxObj::Context(val) = &self.data[key] { Some(val.clone()) }
             else { None }
