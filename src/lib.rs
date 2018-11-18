@@ -174,12 +174,12 @@ pub mod context {
         }
 
         pub fn subcontext(&self, key: &str) -> Option<Context> {
-            if let CtxObj::Context(val) = &self.data[key] { Some(val.clone()) }
+            if let Some(CtxObj::Context(val)) = self.data.get(key) { Some(val.clone()) }
             else { None }
         }
 
         pub fn list_contexts(&self, key: &str) -> Option<Vec<Context>> {
-            if let CtxObj::Array(val) = &self.data[key] {
+            if let Some(CtxObj::Array(val)) = self.data.get(key) {
                 let mut ret = Vec::new();
                 for i in val.iter() {
                     if let CtxObj::Context(ctx) = i {
