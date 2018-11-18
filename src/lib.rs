@@ -7,7 +7,7 @@ pub mod context {
     use yaml_rust::{Yaml, YamlLoader, YamlEmitter};
     use std::ops::Index;
     use rpds::HashTrieMap;
-    use std::fmt::{Display, Formatter, Result};
+    use std::fmt::{Display, Formatter};
     use linked_hash_map::LinkedHashMap;
 
     use pyo3::prelude::*;
@@ -28,6 +28,58 @@ pub mod context {
         Array(Vec<CtxObj>),
         Context(Context),
         None
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct CtxObjUnpackError {}
+
+    pub trait CtxObjUnpack: Sized {
+        fn unpack(src: CtxObj) -> Option<Self>;
+    }
+
+    impl CtxObjUnpack for String {
+        fn unpack(src: CtxObj) -> Option<Self> {
+            if let CtxObj::Str(val) = src {
+                Some(val)
+            }
+            else { None }
+        }
+    }
+
+    impl CtxObjUnpack for i64 {
+        fn unpack(src: CtxObj) -> Option<Self> {
+            if let CtxObj::Int(val) = src {
+                Some(val)
+            }
+            else { None }
+        }
+    }
+
+    impl CtxObjUnpack for usize {
+        fn unpack(src: CtxObj) -> Option<Self> {
+            if let CtxObj::Int(val) = src {
+                Some(val as Self)
+            }
+            else { None }
+        }
+    }
+
+    impl CtxObjUnpack for f64 {
+        fn unpack(src: CtxObj) -> Option<Self> {
+            if let CtxObj::Real(val) = src {
+                Some(val)
+            }
+            else { None }
+        }
+    }
+
+    impl CtxObjUnpack for bool {
+        fn unpack(src: CtxObj) -> Option<Self> {
+            if let CtxObj::Bool(val) = src {
+                Some(val)
+            }
+            else { None }
+        }
     }
 
     impl From<Yaml> for CtxObj {
@@ -127,7 +179,7 @@ pub mod context {
     }
 
     impl Display for Context {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             let mut out_str = String::new();
             {
                 let mut emitter = YamlEmitter::new(&mut out_str);
@@ -173,6 +225,14 @@ pub mod context {
             self.data.get(key)
         }
 
+        pub fn unpack<T: CtxObjUnpack>(&self, key: &str) -> Result<T, CtxObjUnpackError> {
+            if let Some(o) = self.data.get(key) {
+                if let Some(v) = T::unpack(o.to_owned()) { Ok(v) }
+                else { Err(CtxObjUnpackError{ }) }
+            }
+            else { Err(CtxObjUnpackError{ }) }
+        }
+
         pub fn subcontext(&self, key: &str) -> Option<Context> {
             if let Some(CtxObj::Context(val)) = self.data.get(key) { Some(val.clone()) }
             else { None }
@@ -199,7 +259,7 @@ pub mod context {
 
 #[cfg(test)]
 mod tests{
-    use crate::context::{Context, CtxObj};
+    use crate::context::Context;
 
     #[test]
     fn multiple_overwrites() {
@@ -248,5 +308,40 @@ mod tests{
     fn hide_nonexisting() {
         let a = Context::from("a: 1\nb: 0");
         assert_eq!(a.hide("c"), Context::from("a: 1\nb: 0"));
+    }
+
+    #[test]
+    fn unpack_string() {
+        let a = Context::from("a: test");
+        let out: String = a.unpack("a").unwrap();
+        assert_eq!(out, String::from("test"));
+    }
+
+    #[test]
+    fn unpack_i64() {
+        let a = Context::from("a: 1");
+        let out: i64 = a.unpack("a").unwrap();
+        assert_eq!(out, 1);
+    }
+
+    #[test]
+    fn unpack_usize() {
+        let a = Context::from("a: 1");
+        let out: usize = a.unpack("a").unwrap();
+        assert_eq!(out, 1);
+    }
+
+    #[test]
+    fn unpack_f64() {
+        let a = Context::from("a: 1.2");
+        let out: f64 = a.unpack("a").unwrap();
+        assert_eq!(out, 1.2);
+    }
+
+    #[test]
+    fn unpack_bool() {
+        let a = Context::from("a: true");
+        let out: bool = a.unpack("a").unwrap();
+        assert_eq!(out, true);
     }
 }
