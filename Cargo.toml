@@ -1,9 +1,9 @@
 [package]
 name = "ymlctx"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Alex Yang <aleozlx@gmail.com>"]
+description = "YAML configuration overlaying system that natively integrates into operationalized tasks"
 edition = "2018"
-description = "YAML configuration overlaying system that natively integrates into jobs"
 
 [dependencies]
 yaml-rust = "0.4"
