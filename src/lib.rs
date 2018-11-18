@@ -162,6 +162,10 @@ pub mod context {
             if let CtxObj::Context(val) = &self.data[key] { Some(val.clone()) }
             else { None }
         }
+
+        pub fn hide(&self, key: &str) -> Context {
+            Context { data: self.data.remove(key) }
+        }
     }
 }
 
