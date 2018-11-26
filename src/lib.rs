@@ -1,8 +1,39 @@
+#![feature(specialization)]
 extern crate yaml_rust;
 extern crate rpds;
 
 #[cfg(feature = "topyobject")]
 extern crate pyo3;
+
+#[cfg(feature = "topyobject")]
+mod context_py {
+    use pyo3::prelude::*;
+    use pyo3::Python;
+    use pyo3::types::{PyDict, PyString};
+//     use pyo3::ObjectProtocol;
+//     use pyo3::class::basic::{PyObjectProtocol};
+
+//     // class Context(dict):
+//     //     def __getattr__(self, name):
+//     //         return self[name]
+
+//     #[pyclass(dict)]
+//     struct Context {}
+
+//     #[pyproto]
+//     impl PyObjectProtocol for Context {
+//         fn __getattr__(&self, name: &PyString) -> PyResult<()> {
+//             let a = self.get_base().get_item(name);
+//             Ok(())
+//         }
+//     }
+
+    pub fn wrapper(obj: PyObject, py: Python) -> PyObject {
+        let locals = PyDict::new(py);
+        locals.set_item("obj", obj).unwrap();
+        py.eval("type('Context', (dict,), { '__getattr__': lambda self, name: self[name] })(obj)", None, Some(&locals)).unwrap().to_object(py)
+    }
+}
 
 pub mod context {
     use yaml_rust::{Yaml, YamlLoader, YamlEmitter};
@@ -188,7 +219,7 @@ pub mod context {
             for (k, v) in self.data.iter() {
                 ctx.set_item(PyString::new(py, k), v.to_object(py)).unwrap();
             }
-            ctx.to_object(py)
+            crate::context_py::wrapper(ctx.to_object(py), py)
         }
     }
 
@@ -364,5 +395,58 @@ mod tests{
         let a = Context::from("a: true");
         let out: bool = a.unpack("a").unwrap();
         assert_eq!(out, true);
+    }
+
+
+}
+
+#[cfg(test)]
+#[cfg(feature = "topyobject")]
+mod tests_py {
+    use crate::context::Context;
+    use pyo3::prelude::*;
+    use pyo3::Python;
+    use pyo3::types::{PyDict, PyString};
+
+    fn pystr(obj: &PyObject, py: Python) -> PyResult<String> {
+        let locals = PyDict::new(py);
+        locals.set_item("obj", obj).unwrap();
+        Ok(py.eval("str(obj)", None, Some(locals))?.extract()?)
+    }
+
+    fn pystr_attr_a(obj: &PyObject, py: Python) -> PyResult<String> {
+        let locals = PyDict::new(py);
+        locals.set_item("obj", obj).unwrap();
+        Ok(py.eval("str(obj.a)", None, Some(locals))?.extract()?)
+    }
+
+    #[test]
+    fn ctx2py() {
+        let a = Context::from("a: 1");
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        let ret: PyObject = a.to_object(py);
+
+        if let Ok(ret_str) = pystr(&ret, py) {
+            assert_eq!(ret_str, String::from("{'a': 1}"));
+        }
+        else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn ctx2py_attr_a() {
+        let a = Context::from("a: 1");
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        let ret: PyObject = a.to_object(py);
+
+        if let Ok(ret_str) = pystr_attr_a(&ret, py) {
+            assert_eq!(ret_str, String::from("1"));
+        }
+        else {
+            assert!(false);
+        }
     }
 }
