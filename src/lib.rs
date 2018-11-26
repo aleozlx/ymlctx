@@ -1,6 +1,7 @@
 extern crate yaml_rust;
 extern crate rpds;
-extern crate linked_hash_map;
+
+#[cfg(feature = "topyobject")]
 extern crate pyo3;
 
 pub mod context {
@@ -8,10 +9,12 @@ pub mod context {
     use std::ops::Index;
     use rpds::HashTrieMap;
     use std::fmt::{Display, Formatter};
-    use linked_hash_map::LinkedHashMap;
 
+    #[cfg(feature = "topyobject")]
     use pyo3::prelude::*;
+    #[cfg(feature = "topyobject")]
     use pyo3::Python;
+    #[cfg(feature = "topyobject")]
     use pyo3::types::{PyDict, PyString, PyList};
 
     #[derive(Clone, Debug, PartialEq)]
@@ -125,6 +128,7 @@ pub mod context {
         }
     }
 
+    #[cfg(feature = "topyobject")]
     impl ToPyObject for CtxObj {
         fn to_object(&self, py: Python) -> PyObject {
             match self {
@@ -169,7 +173,7 @@ pub mod context {
 
     impl Into<Yaml> for Context {
         fn into(self) -> Yaml {
-            let mut map = LinkedHashMap::new();
+            let mut map = yaml_rust::yaml::Hash::new();
             for (k, v) in self.data.iter() {
                 map.insert(Yaml::String(k.to_owned()), v.to_owned().into());
             }
@@ -177,6 +181,7 @@ pub mod context {
         }
     }
 
+    #[cfg(feature = "topyobject")]
     impl ToPyObject for Context {
         fn to_object(&self, py: Python) -> PyObject {
             let ctx = PyDict::new(py);
