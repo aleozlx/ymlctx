@@ -1,14 +1,18 @@
 dist: xenial
 language: rust
-rust:
-- stable
-- beta
-- nightly
+matrix:
+  include:
+  - rust: stable
+    env: FEATURES=""
+  - rust: beta
+    env: FEATURES=""
+  - rust: nightly
+    env: FEATURES="--all-features"
 cache: cargo
 before_install:
 - sudo apt-get update
 - sudo apt-get install -y python3 python3-dev
 - sudo ln -sf /usr/bin/python3 /usr/bin/python
 script:
-- cargo build --all-features
-- cargo test --all-features
+- cargo build ${FEATURES}
+- cargo test ${FEATURES}
