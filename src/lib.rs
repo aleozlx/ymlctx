@@ -1,4 +1,3 @@
-#![feature(specialization)]
 extern crate yaml_rust;
 extern crate rpds;
 
@@ -9,7 +8,7 @@ extern crate pyo3;
 mod context_py {
     use pyo3::prelude::*;
     use pyo3::Python;
-    use pyo3::types::{PyDict, PyString};
+    use pyo3::types::PyDict;
 //     use pyo3::ObjectProtocol;
 //     use pyo3::class::basic::{PyObjectProtocol};
 
@@ -406,7 +405,7 @@ mod tests_py {
     use crate::context::Context;
     use pyo3::prelude::*;
     use pyo3::Python;
-    use pyo3::types::{PyDict, PyString};
+    use pyo3::types::PyDict;
 
     fn pystr(obj: &PyObject, py: Python) -> PyResult<String> {
         let locals = PyDict::new(py);
