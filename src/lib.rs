@@ -1,6 +1,9 @@
 extern crate yaml_rust;
 extern crate rpds;
 
+#[macro_use]
+extern crate serde_derive;
+
 #[cfg(feature = "topyobject")]
 extern crate pyo3;
 
@@ -47,14 +50,15 @@ pub mod context {
     #[cfg(feature = "topyobject")]
     use pyo3::types::{PyDict, PyString, PyList};
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     pub struct Context {
         data: HashTrieMap<String, CtxObj>
     }
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     pub enum CtxObj {
         Str(String),
+        Bin(Vec<u8>),
         Int(i64),
         Real(f64),
         Bool(bool),
@@ -153,7 +157,8 @@ pub mod context {
                 CtxObj::Real(val) => Yaml::Real(val.to_string()),
                 CtxObj::None => Yaml::Null,
                 CtxObj::Context(val) => val.clone().into(),
-                CtxObj::Array(val) => Yaml::Array(val.iter().map(|i| {i.clone().into()}).collect())
+                CtxObj::Array(val) => Yaml::Array(val.iter().map(|i| {i.clone().into()}).collect()),
+                CtxObj::Bin(_) => unimplemented!()
             }
         }
     }
