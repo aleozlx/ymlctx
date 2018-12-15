@@ -176,7 +176,8 @@ pub mod context {
                 CtxObj::Array(val) => {
                     let tmp: Vec<PyObject> = val.iter().map(|i| {i.to_object(py)}).collect();
                     PyList::new(py, &tmp).to_object(py)
-                }
+                },
+                CtxObj::Bin(val) => val.to_object(py)
             }
         }
     }

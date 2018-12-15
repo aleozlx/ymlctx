@@ -1,6 +1,6 @@
 [package]
 name = "ymlctx"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Alex Yang <aleozlx@gmail.com>"]
 description = "YAML configuration overlaying system that natively integrates into operationalized tasks"
 license = "MIT"
@@ -13,8 +13,8 @@ topyobject = ["pyo3"]
 yaml-rust = "^0.4"
 rpds = { version = "^0.5.0", features = ["serde"] }
 pyo3 = { version = "0.5", optional = true }
-serde = "1.0.82"
-serde_derive = "1.0.82"
+serde = "^1.0.82"
+serde_derive = "^1.0.82"
 
 [badges]
 travis-ci = { repository = "aleozlx/ymlctx", branch = "master" }
