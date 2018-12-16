@@ -30,6 +30,21 @@ mod context_py {
 //         }
 //     }
 
+    /// Wrap a Python dict into a type equivalent to this:
+    /// 
+    /// ```python
+    /// class Context(dict):
+    ///     def __getattr__(self, name):
+    ///         return self[name]
+    /// ```
+    /// 
+    /// This type is used to pass contexts around in Python, which makes it easier to refer to their elements
+    /// using the attribute syntax instead of an indexer + string, e.g.
+    /// 
+    /// ```python
+    /// # no more ctx['var'], just
+    /// ctx.var
+    /// ```
     pub fn wrapper(obj: PyObject, py: Python) -> PyObject {
         let locals = PyDict::new(py);
         locals.set_item("obj", obj).unwrap();
@@ -50,11 +65,13 @@ pub mod context {
     #[cfg(feature = "topyobject")]
     use pyo3::types::{PyDict, PyString, PyList};
 
+    /// A data structure designed to provide a high-level language agnostic calling convention.
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     pub struct Context {
         data: HashTrieMap<String, CtxObj>
     }
 
+    /// Enum of all primitive types that a Ccntext is composed of.
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     pub enum CtxObj {
         Str(String),
@@ -67,9 +84,13 @@ pub mod context {
         None
     }
 
+    /// The error type for the low-level unpack() functions.
+    /// This error occurs when either the key does not exist or it is not feasible to convert into the deduced type.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct CtxObjUnpackError {}
 
+    /// Unpack data from some context element into a Rust primitive/standard type.
+    /// The destination type can usually be deduced to save type annotations as well.
     pub trait CtxObjUnpack: Sized {
         fn unpack(src: CtxObj) -> Option<Self>;
     }
@@ -248,10 +269,21 @@ pub mod context {
     }
 
     impl Context {
+        /// Create an empty context.
         pub fn new() -> Context {
             Context { data: HashTrieMap::new() }
         }
 
+        /// Overlay `another` on top of this context.
+        /// 
+        /// **Example**
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::Context;
+        /// let eg = Context::from("a: 1\nb: 0");
+        /// let another = Context::from("b: 1");
+        /// assert_eq!(eg.overlay(&another), Context::from("a: 1\nb: 1"));
+        /// ```
         pub fn overlay(&self, another: &Context) -> Context {
             let mut forward_snapshot = self.data.clone();
             for (k, v) in another.data.iter() {
@@ -260,10 +292,29 @@ pub mod context {
             Context { data: forward_snapshot }
         }
 
+        /// Set a context element.
+        ///
+        /// **Example**
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj};
+        /// let eg = Context::from("a: 1\nb: 0");
+        /// assert_eq!(eg.set("b", CtxObj::Int(1)), Context::from("a: 1\nb: 1"));
+        /// ```
         pub fn set(&self, key: &str, val: CtxObj) -> Context {
             Context { data: self.data.insert(key.to_owned(), val) }
         }
 
+        /// Optionally set a context element. (Syntax sugar to adapt to Option<CtxObj>)
+        ///
+        /// **Example**
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj};
+        /// let eg = Context::from("a: 1\nb: 0");
+        /// assert_eq!(eg.set_opt("b", Some(CtxObj::Int(1))), Context::from("a: 1\nb: 1"));
+        /// assert_eq!(eg.set_opt("b", None), Context::from("a: 1\nb: 0"));
+        /// ```
         pub fn set_opt(&self, key: &str, optional: Option<CtxObj>) -> Context {
             match optional {
                 Some(val) => Context { data: self.data.insert(key.to_owned(), val) },
@@ -271,10 +322,55 @@ pub mod context {
             }
         }
 
+        /// Get an element *by reference* if the key exists.
+        ///
+        /// **Example**
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("a: 1");
+        /// assert_eq!(eg.get("a").unwrap().clone(), CtxObj::Int(1));
+        /// assert_eq!(eg.get("b"), None);
+        /// ```
         pub fn get(&self, key: &str) -> Option<&CtxObj> {
             self.data.get(key)
         }
 
+        /// Unpack an element by key if it exists.
+        ///
+        /// **Example**
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("a: 1");
+        /// let success: i64 = eg.unpack("a").unwrap();
+        /// assert_eq!(success, 1);
+        /// 
+        /// /*Although, beware of auto-conversion due to polymorphism with the CtxObjUnpack trait.*/
+        /// let success: i32 = eg.unpack("a").unwrap();
+        /// assert_eq!(success, 1);
+        /// ```
+        /// This should fail because the key specified does not exist.
+        /// ```rust,should_panic
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("a: 1");
+        /// let err: i64 = match eg.unpack("b") {
+        ///     Ok(v) => v,
+        ///     Err(_) => panic!()
+        /// };
+        /// ```
+        /// 
+        /// This should also fail because the type conversion is not feasible.
+        /// ```rust,should_panic
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("a: 1");
+        /// let err: String = match eg.unpack("b") {
+        ///     Ok(v) => v,
+        ///     Err(_) => panic!()
+        /// };
+        /// ```
         pub fn unpack<T: CtxObjUnpack>(&self, key: &str) -> Result<T, CtxObjUnpackError> {
             if let Some(o) = self.data.get(key) {
                 if let Some(v) = T::unpack(o.to_owned()) { Ok(v) }
@@ -283,11 +379,31 @@ pub mod context {
             else { Err(CtxObjUnpackError{ }) }
         }
 
+        /// Enter a nested context.
+        /// 
+        /// **Example**
+        /// 
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("s:\n  a: 1");
+        /// assert_eq!(eg.subcontext("s"), Some(Context::from("a: 1")));
+        /// ```
         pub fn subcontext(&self, key: &str) -> Option<Context> {
             if let Some(CtxObj::Context(val)) = self.data.get(key) { Some(val.clone()) }
             else { None }
         }
 
+        /// List nested contexts.
+        /// 
+        /// **Example**
+        /// 
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("s:\n- a: 1\n- b: 1");
+        /// assert_eq!(eg.list_contexts("s"), Some(vec![Context::from("a: 1"), Context::from("b: 1")]));
+        /// ```
         pub fn list_contexts(&self, key: &str) -> Option<Vec<Context>> {
             if let Some(CtxObj::Array(val)) = self.data.get(key) {
                 let mut ret = Vec::new();
@@ -301,8 +417,34 @@ pub mod context {
             else { None }
         }
 
+        /// Hide an element by key if it exists.
+        /// 
+        /// **Example**
+        /// 
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("a: 1\nb: 1");
+        /// assert_eq!(eg.hide("b"), Context::from("a: 1"));
+        /// assert_eq!(eg.hide("c"), eg);
+        /// ```
         pub fn hide(&self, key: &str) -> Context {
             Context { data: self.data.remove(key) }
+        }
+
+        /// Get all keys from this context.
+        /// 
+        /// **Example**
+        /// 
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("a: 1\nb: 1");
+        /// let keys: std::collections::HashSet<String> = eg.keys().map(|k| { k.to_owned() }).collect();
+        /// assert_eq!(keys, vec![String::from("a"), String::from("b")].into_iter().collect());
+        /// ```
+        pub fn keys(&self) -> rpds::map::hash_trie_map::IterKeys<String, CtxObj> {
+            self.data.keys()
         }
     }
 }
