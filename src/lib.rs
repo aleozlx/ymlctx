@@ -336,6 +336,23 @@ pub mod context {
             self.data.get(key)
         }
 
+        /// Get an element *by value* if the key exists.
+        ///
+        /// **Example**
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::{Context, CtxObj, CtxObjUnpack};
+        /// let eg = Context::from("a: 1");
+        /// assert_eq!(eg.get_clone("a").unwrap(), CtxObj::Int(1));
+        /// assert_eq!(eg.get_clone("b"), None);
+        /// ```
+        pub fn get_clone(&self, key: &str) -> Option<CtxObj> {
+            match self.data.get(key) {
+                Some(p) => Some(p.clone()),
+                None => None
+            }
+        }
+
         /// Unpack an element by key if it exists.
         ///
         /// **Example**
