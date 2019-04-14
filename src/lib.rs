@@ -292,6 +292,43 @@ pub mod context {
             Context { data: forward_snapshot }
         }
 
+        /// Use as a template and render it with other values
+        /// 
+        /// **Example**
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::Context;
+        /// let template = Context::from("a: 1\nb: 0");
+        /// let values = Context::from("b: 1\nc: 2");
+        /// assert_eq!(template.render(&values), Context::from("a: 1\nb: 1"));
+        /// ```
+        /// 
+        /// Note that this is recursive!
+        /// 
+        /// ```
+        /// # extern crate ymlctx;
+        /// # use ymlctx::context::Context;
+        /// let template = Context::from("a: 1\nb:\n  b1: 0");
+        /// let values = Context::from("b:\n  b1: 1\n  b2: 2\nc: 2");
+        /// assert_eq!(template.render(&values), Context::from("a: 1\nb:\n  b1: 1"));
+        /// ```
+        pub fn render(&self, values: &Context) -> Context {
+            let mut forward_snapshot = self.data.clone();
+            for (k, v) in values.data.iter() {
+                if forward_snapshot.contains_key(k) {
+                    if let CtxObj::Context(subtemplate) = forward_snapshot[k].clone() {
+                        if let CtxObj::Context(subvalues) = v {
+                            forward_snapshot.insert_mut(k.to_owned(), CtxObj::Context(subtemplate.render(&subvalues)));
+                        }
+                    }
+                    else {
+                        forward_snapshot.insert_mut(k.to_owned(), v.to_owned()); 
+                    }
+                }
+            }
+            Context { data: forward_snapshot }
+        }
+
         /// Set a context element.
         ///
         /// **Example**
